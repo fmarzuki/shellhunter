@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shellhunter"
+version = "0.1.0"
+description = "CLI tool to detect webshells, backdoors, and malicious shell scripts on Linux servers"
+requires-python = ">=3.10"
+dependencies = ["rich>=13.0"]
+
+[project.scripts]
+shellhunter = "scanner.main:main"
+
+[tool.setuptools.packages.find]
+include = ["scanner*"]
