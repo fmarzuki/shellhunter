@@ -73,7 +73,7 @@ shellhunter --path /var/www/html --severity-level high --json-output report.json
 
 ## Deteksi
 
-### Signature (15 rules)
+### Signature (19 rules)
 
 | Rule | Deskripsi | Severity |
 |------|-----------|----------|
@@ -92,8 +92,12 @@ shellhunter --path /var/www/html --severity-level high --json-output report.json
 | SIG-013 | Netcat reverse shell (`nc -e`) | CRITICAL |
 | SIG-014 | Python reverse shell (`socket` + `subprocess`) | HIGH |
 | SIG-015 | `curl` pipe ke `bash` | HIGH |
+| SIG-016 | `eval($variable)` pada variabel non-superglobal | HIGH |
+| SIG-017 | Konstruksi nama fungsi dinamis (`base64_decode` di-split) | HIGH |
+| SIG-018 | Kombinasi `error_reporting(0)` + `set_time_limit(0)` | MEDIUM |
+| SIG-019 | Variable function call `$var($arg)` — eksekusi tidak langsung | HIGH |
 
-### Heuristic (6 rules)
+### Heuristic (7 rules)
 
 | Rule | Deskripsi | Severity |
 |------|-----------|----------|
@@ -103,6 +107,7 @@ shellhunter --path /var/www/html --severity-level high --json-output report.json
 | HEU-004 | Rasio komentar < 1% pada file 50+ baris | LOW |
 | HEU-005 | 3+ panggilan fungsi encoding | HIGH |
 | HEU-006 | File kecil (<4KB) dengan density fungsi tinggi (deep-scan) | MEDIUM |
+| HEU-007 | 100+ string concatenation assignments (`.=`) — payload assembly | HIGH |
 
 ### Metadata (3 rules)
 

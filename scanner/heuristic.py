@@ -14,6 +14,7 @@ _ENCODING_FUNCS_RE = re.compile(
     re.IGNORECASE,
 )
 _FUNCTION_CALL_RE = re.compile(rb'\b[a-zA-Z_]\w*\s*\(')
+_STRING_CONCAT_RE = re.compile(rb'\.=\s*"')
 
 
 def _shannon_entropy(data: bytes) -> float:
@@ -112,5 +113,16 @@ class HeuristicAnalyzer:
                         severity=Severity.MEDIUM,
                         score=15,
                     ))
+
+        # HEU-007: Massive string concatenation buildup
+        concat_matches = _STRING_CONCAT_RE.findall(data)
+        if len(concat_matches) >= 100:
+            findings.append(Finding(
+                rule_id="HEU-007",
+                detection_type=DetectionType.HEURISTIC,
+                description=f"Found {len(concat_matches)} string concatenation assignments (.= \") - possible payload assembly",
+                severity=Severity.HIGH,
+                score=25,
+            ))
 
         return findings

@@ -125,6 +125,38 @@ SIGNATURE_RULES: list[tuple[str, re.Pattern[bytes], str, Severity, int]] = [
         Severity.HIGH,
         30,
     ),
+    # SIG-016: eval($variable) on non-superglobal variable
+    (
+        "SIG-016",
+        re.compile(rb'eval\s*\(\s*\$(?!_(POST|GET|REQUEST|COOKIE|SERVER|FILES|ENV|SESSION)\b)', re.IGNORECASE),
+        "eval() with non-superglobal variable - possible obfuscated execution",
+        Severity.HIGH,
+        30,
+    ),
+    # SIG-017: Dynamic function name construction (base64_decode split)
+    (
+        "SIG-017",
+        re.compile(rb"""\$\w+\s*=\s*["']base["'].*\$\w+\s*=\s*["']64_decode["']""", re.IGNORECASE | re.DOTALL),
+        "Dynamic function name construction (base64_decode split across variables)",
+        Severity.HIGH,
+        30,
+    ),
+    # SIG-018: error_reporting(0) + set_time_limit(0) combo
+    (
+        "SIG-018",
+        re.compile(rb'error_reporting\s*\(\s*0\s*\).*set_time_limit\s*\(\s*0\s*\)', re.IGNORECASE | re.DOTALL),
+        "Classic webshell header: error_reporting(0) + set_time_limit(0)",
+        Severity.MEDIUM,
+        20,
+    ),
+    # SIG-019: Variable function call $var($arg)
+    (
+        "SIG-019",
+        re.compile(rb'\$\w+\s*\(\s*\$\w+\s*\)'),
+        "Variable function call pattern - possible indirect code execution",
+        Severity.HIGH,
+        30,
+    ),
 ]
 
 SNIPPET_MAX_LEN = 200
