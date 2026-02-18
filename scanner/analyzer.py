@@ -22,12 +22,14 @@ class ShellHunterAnalyzer:
         deep_scan: bool = False,
         severity_level: Severity = Severity.LOW,
         delete_mode: bool = False,
+        exclude_dirs: set[str] | None = None,
     ):
         self.paths = paths
         self.extensions = extensions
         self.deep_scan = deep_scan
         self.severity_level = severity_level
         self.delete_mode = delete_mode
+        self.exclude_dirs = exclude_dirs
         self.signature_scanner = SignatureScanner()
         self.heuristic_analyzer = HeuristicAnalyzer()
         self.metadata_analyzer = MetadataAnalyzer()
@@ -39,7 +41,7 @@ class ShellHunterAnalyzer:
         # Discover files
         all_files: list[str] = []
         for path in self.paths:
-            all_files.extend(discover_files(path, self.extensions))
+            all_files.extend(discover_files(path, self.extensions, self.exclude_dirs))
 
         summary = ScanSummary(total_files=len(all_files))
         total = len(all_files)

@@ -10,7 +10,7 @@ from . import __version__
 from .analyzer import ShellHunterAnalyzer
 from .models import Severity
 from .reporter import export_json, print_banner, print_results, print_summary
-from .utils import DEFAULT_EXTENSIONS
+from .utils import DEFAULT_EXCLUDE_DIRS, DEFAULT_EXTENSIONS
 
 # stderr for progress/status, stdout for results (pipeable)
 stderr_console = Console(stderr=True)
@@ -54,8 +54,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--severity-level",
         choices=["low", "medium", "high", "critical"],
-        default="low",
-        help="Minimum severity to report (default: low)",
+        default="medium",
+        help="Minimum severity to report (default: medium)",
+    )
+    parser.add_argument(
+        "--exclude",
+        nargs="+",
+        metavar="DIR",
+        default=None,
+        help="Directory names to exclude from scan (adds to defaults: vendor, node_modules, .git, …)",
+    )
+    parser.add_argument(
+        "--no-default-excludes",
+        action="store_true",
+        help="Disable built-in directory exclusions (vendor, node_modules, .git, etc.)",
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -94,12 +106,20 @@ def main(argv: list[str] | None = None) -> None:
     extensions = set(args.ext) if args.ext else None
     severity_level = SEVERITY_MAP[args.severity_level]
 
+    if args.no_default_excludes:
+        exclude_dirs = set(args.exclude) if args.exclude else set()
+    else:
+        exclude_dirs = DEFAULT_EXCLUDE_DIRS.copy()
+        if args.exclude:
+            exclude_dirs.update(args.exclude)
+
     analyzer = ShellHunterAnalyzer(
         paths=args.path,
         extensions=extensions,
         deep_scan=args.deep_scan,
         severity_level=severity_level,
         delete_mode=args.delete,
+        exclude_dirs=exclude_dirs,
     )
 
     start = time.monotonic()

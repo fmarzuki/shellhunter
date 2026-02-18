@@ -16,14 +16,22 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 DEFAULT_PATHS = ["/var/www", "/home", "/public_html"]
 DEFAULT_EXTENSIONS = {".php", ".phtml", ".php5", ".php7", ".sh", ".py", ".pl"}
 
+DEFAULT_EXCLUDE_DIRS: set[str] = {
+    'vendor', 'node_modules', '.git', '.svn', '.hg',
+    'bower_components', '.tox', '__pycache__', '.venv', 'venv',
+}
+
 
 def discover_files(
     root: str,
     extensions: set[str] | None = None,
+    exclude_dirs: set[str] | None = None,
 ) -> list[str]:
     """Walk directory tree collecting files by extension. Symlink-loop safe."""
     if extensions is None:
         extensions = DEFAULT_EXTENSIONS
+    if exclude_dirs is None:
+        exclude_dirs = set()
     found: list[str] = []
     seen_inodes: set[tuple[int, int]] = set()
 
@@ -38,6 +46,9 @@ def discover_files(
         except OSError:
             dirnames.clear()
             continue
+
+        # Prune excluded dirs in-place (prevents os.walk from descending)
+        dirnames[:] = [d for d in dirnames if d not in exclude_dirs]
 
         for fname in filenames:
             fpath = os.path.join(dirpath, fname)

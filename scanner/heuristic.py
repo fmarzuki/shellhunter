@@ -92,10 +92,10 @@ class HeuristicAnalyzer:
             ))
 
         # HEU-004: Low comment ratio in large files
-        if len(lines) >= 50:
+        if len(lines) >= 100:
             comments = _COMMENT_RE.findall(data)
             comment_ratio = len(comments) / len(lines)
-            if comment_ratio < 0.01:
+            if comment_ratio < 0.005:
                 findings.append(Finding(
                     rule_id="HEU-004",
                     detection_type=DetectionType.HEURISTIC,

@@ -1,5 +1,7 @@
 # ShellHunter
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-fmarzuki-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/fmarzuki)
+
 CLI tool for detecting webshells, backdoors, and malicious shell scripts on Linux servers. Designed for security audits on servers running WordPress, OJS, Laravel, etc.
 
 > **Note:** By default, ShellHunter is read-only and safe to run in production. The `--delete` flag enables destructive mode — use with caution.
@@ -45,11 +47,15 @@ shellhunter [OPTIONS]
 --ext EXT [EXT ...]        File extensions to scan (default: .php .phtml .php5 .php7 .sh .py .pl)
 --deep-scan                Enable additional heuristic checks (function density analysis)
 --json-output FILE         Export results to a JSON file
---severity-level LEVEL     Minimum severity to report: low, medium, high, critical (default: low)
+--severity-level LEVEL     Minimum severity to report: low, medium, high, critical (default: medium)
+--exclude DIR [DIR ...]    Additional directory names to exclude (adds to built-in list)
+--no-default-excludes      Disable built-in directory exclusions (vendor, node_modules, .git, etc.)
 --delete                   Auto-delete files with CRITICAL or HIGH findings (use with caution)
 -v, --verbose              Show detailed findings with line numbers and snippets
 --version                  Show version
 ```
+
+**Built-in excluded directories** (skipped by default): `vendor`, `node_modules`, `.git`, `.svn`, `.hg`, `bower_components`, `.tox`, `__pycache__`, `.venv`, `venv`
 
 ### Examples
 
@@ -72,6 +78,15 @@ shellhunter --path /var/www/html --ext .php .phtml
 # CI/CD pipeline usage
 shellhunter --path /var/www/html --severity-level high --json-output report.json
 # Exit code 1 if CRITICAL/HIGH findings exist, 0 if clean
+
+# Include LOW severity findings (hidden by default)
+shellhunter --path /var/www/html --severity-level low
+
+# Exclude additional directories beyond the built-in defaults
+shellhunter --path /var/www/html --exclude uploads cache tmp
+
+# Scan vendor dirs too (disable built-in exclusions)
+shellhunter --path /var/www/html --no-default-excludes
 
 # Delete detected malicious files (irreversible — confirm before use)
 shellhunter --path /var/www/html --delete --verbose
@@ -123,7 +138,7 @@ shellhunter --path /var/www/html --delete --verbose
 | HEU-001 | Shannon entropy > 5.5 | MEDIUM |
 | HEU-002 | Line exceeds 5000 characters | MEDIUM |
 | HEU-003 | 5+ variable names longer than 20 characters | MEDIUM |
-| HEU-004 | Comment ratio < 1% in files with 50+ lines | LOW |
+| HEU-004 | Comment ratio < 0.5% in files with 100+ lines | LOW |
 | HEU-005 | 3+ encoding/decoding function calls | HIGH |
 | HEU-006 | Small file (<4KB) with high function call density (deep-scan only) | MEDIUM |
 | HEU-007 | 100+ string concatenation assignments (`.="`) — payload assembly | HIGH |
