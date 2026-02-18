@@ -32,6 +32,7 @@ class ScanResult:
     findings: list[Finding] = field(default_factory=list)
     risk_score: int = 0
     error: str | None = None
+    deleted: bool = False
 
     def compute_risk_score(self) -> None:
         raw = sum(f.score for f in self.findings)

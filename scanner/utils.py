@@ -4,6 +4,9 @@ import stat
 import time
 from pathlib import Path
 
+_TINY_SCRIPT_EXTS = {'.php', '.py', '.sh', '.pl'}
+_TINY_FILE_THRESHOLD = 200  # bytes
+
 from .models import DetectionType, Finding, Severity
 
 logger = logging.getLogger(__name__)
@@ -107,5 +110,17 @@ class MetadataAnalyzer:
                 ))
         except OSError:
             pass
+
+        # META-004: Suspiciously tiny script file
+        file_size = st.st_size
+        suffix = Path(path).suffix.lower()
+        if file_size < _TINY_FILE_THRESHOLD and suffix in _TINY_SCRIPT_EXTS:
+            findings.append(Finding(
+                rule_id="META-004",
+                detection_type=DetectionType.METADATA,
+                description=f"Suspiciously tiny script file ({file_size} bytes) - possible one-liner shell",
+                severity=Severity.MEDIUM,
+                score=15,
+            ))
 
         return findings

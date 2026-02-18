@@ -1,6 +1,7 @@
 import math
 import re
 from collections import Counter
+from pathlib import Path
 
 from .models import DetectionType, Finding, Severity
 
@@ -15,6 +16,20 @@ _ENCODING_FUNCS_RE = re.compile(
 )
 _FUNCTION_CALL_RE = re.compile(rb'\b[a-zA-Z_]\w*\s*\(')
 _STRING_CONCAT_RE = re.compile(rb'\.=\s*"')
+
+# HEU-008: PHP code in non-PHP text files
+_NON_PHP_EXTS = {'.txt', '.csv', '.xml', '.svg'}
+_PHP_TAG_RE = re.compile(rb'<\?php|<\?=|eval\s*\(', re.IGNORECASE)
+
+# HEU-009: Double/disguised extension patterns
+_DOUBLE_EXT_EXEC_DOC_RE = re.compile(
+    r'\.(php\d?|phtml|phar|cgi|pl|py|jsp|asp)\.(pdf|jpg|jpeg|png|gif|doc|docx|xls|zip|txt)$',
+    re.IGNORECASE,
+)
+_DOUBLE_EXT_DOC_EXEC_RE = re.compile(
+    r'\.(pdf|jpg|jpeg|png|gif|doc|docx|xls|zip|txt)\.(php\d?|phtml|phar|cgi|pl|py|jsp|asp)\d*$',
+    re.IGNORECASE,
+)
 
 
 def _shannon_entropy(data: bytes) -> float:
@@ -35,7 +50,7 @@ def _shannon_entropy(data: bytes) -> float:
 class HeuristicAnalyzer:
     """Heuristic analysis for obfuscation and suspicious patterns."""
 
-    def analyze(self, content: bytes, deep_scan: bool = False) -> list[Finding]:
+    def analyze(self, content: bytes, deep_scan: bool = False, file_path: str | None = None) -> list[Finding]:
         findings: list[Finding] = []
         # Cap analysis content for performance
         data = content[:HEURISTIC_CAP]
@@ -124,5 +139,28 @@ class HeuristicAnalyzer:
                 severity=Severity.HIGH,
                 score=25,
             ))
+
+        # HEU-008: PHP code in non-PHP text files
+        if file_path is not None:
+            suffix = Path(file_path).suffix.lower()
+            if suffix in _NON_PHP_EXTS and _PHP_TAG_RE.search(data):
+                findings.append(Finding(
+                    rule_id="HEU-008",
+                    detection_type=DetectionType.HEURISTIC,
+                    description=f"PHP code found in non-PHP file ({suffix}) - possible disguised webshell",
+                    severity=Severity.HIGH,
+                    score=25,
+                ))
+
+            # HEU-009: Double/disguised extension
+            fname = Path(file_path).name
+            if _DOUBLE_EXT_EXEC_DOC_RE.search(fname) or _DOUBLE_EXT_DOC_EXEC_RE.search(fname):
+                findings.append(Finding(
+                    rule_id="HEU-009",
+                    detection_type=DetectionType.HEURISTIC,
+                    description=f"Double/disguised file extension detected: {fname}",
+                    severity=Severity.HIGH,
+                    score=25,
+                ))
 
         return findings

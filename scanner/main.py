@@ -63,6 +63,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Show detailed findings with line numbers and snippets",
     )
     parser.add_argument(
+        "--delete",
+        action="store_true",
+        help="Auto-delete files with CRITICAL or HIGH findings (use with caution)",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
@@ -80,6 +85,12 @@ def main(argv: list[str] | None = None) -> None:
 
     print_banner(stderr_console)
 
+    if args.delete:
+        stderr_console.print(
+            "[bold red]WARNING: --delete mode is active. "
+            "Files with CRITICAL or HIGH findings will be permanently deleted![/bold red]"
+        )
+
     extensions = set(args.ext) if args.ext else None
     severity_level = SEVERITY_MAP[args.severity_level]
 
@@ -88,6 +99,7 @@ def main(argv: list[str] | None = None) -> None:
         extensions=extensions,
         deep_scan=args.deep_scan,
         severity_level=severity_level,
+        delete_mode=args.delete,
     )
 
     start = time.monotonic()

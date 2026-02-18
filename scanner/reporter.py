@@ -39,7 +39,8 @@ def _print_file_result(console: Console, result: ScanResult, verbose: bool) -> N
     max_severity = max((f.severity for f in result.findings), default=Severity.LOW)
     color = SEVERITY_COLORS.get(max_severity, "white")
 
-    header = f"[{color}]{result.file_path}[/{color}]  [dim]Risk Score: {result.risk_score}/100[/dim]"
+    deleted_tag = "  [bold red][DELETED][/bold red]" if result.deleted else ""
+    header = f"[{color}]{result.file_path}[/{color}]  [dim]Risk Score: {result.risk_score}/100[/dim]{deleted_tag}"
     console.print(header)
 
     table = Table(show_header=True, header_style="bold", box=None, padding=(0, 1))
@@ -90,6 +91,9 @@ def print_summary(console: Console, summary: ScanSummary) -> None:
         f"[cyan]{summary.severity_counts.get('LOW', 0)}[/cyan]",
     )
     table.add_row("Scan duration", f"{summary.duration_seconds:.2f}s")
+    deleted_count = sum(1 for r in summary.results if r.deleted)
+    if deleted_count:
+        table.add_row("Files deleted", f"[bold red]{deleted_count}[/bold red]")
     if summary.errors:
         table.add_row("Errors", f"[red]{summary.errors}[/red]")
 
@@ -110,6 +114,7 @@ def export_json(summary: ScanSummary, output_path: str) -> None:
             {
                 "file": r.file_path,
                 "risk_score": r.risk_score,
+                "deleted": r.deleted,
                 "findings": [
                     {
                         "rule_id": f.rule_id,

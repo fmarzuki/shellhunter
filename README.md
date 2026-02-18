@@ -1,15 +1,17 @@
 # ShellHunter
 
-CLI tool untuk mendeteksi webshell, backdoor, dan malicious shell script pada server Linux. Dirancang untuk security audit pada server yang menjalankan WordPress, OJS, Laravel, dll. Bersifat **read-only** dan aman dijalankan di production.
+CLI tool for detecting webshells, backdoors, and malicious shell scripts on Linux servers. Designed for security audits on servers running WordPress, OJS, Laravel, etc.
 
-## Instalasi
+> **Note:** By default, ShellHunter is read-only and safe to run in production. The `--delete` flag enables destructive mode — use with caution.
+
+## Installation
 
 ```bash
 # Clone repository
 git clone <repo-url> shellhunter
 cd shellhunter
 
-# Buat virtual environment
+# Create virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 
@@ -17,116 +19,147 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-Requirement: Python 3.10+
+Requires Python 3.10+
 
-## Penggunaan
+## Usage
 
-### Scan dasar
+### Basic scan
 
 ```bash
-# Scan direktori saat ini
+# Scan current directory
 shellhunter
 
-# Scan path tertentu
+# Scan a specific path
 shellhunter --path /var/www/html
 
-# Scan beberapa path sekaligus
+# Scan multiple paths
 shellhunter --path /var/www /home/user/public_html
 ```
 
-### Opsi lengkap
+### All options
 
 ```
 shellhunter [OPTIONS]
 
---path PATH [PATH ...]     Path yang akan di-scan (default: direktori saat ini)
---ext EXT [EXT ...]        Ekstensi file yang di-scan (default: .php .phtml .php5 .php7 .sh .py .pl)
---deep-scan                Aktifkan heuristic tambahan (function density analysis)
---json-output FILE         Export hasil ke file JSON
---severity-level LEVEL     Minimum severity yang ditampilkan: low, medium, high, critical (default: low)
--v, --verbose              Tampilkan detail temuan (line number dan snippet)
---version                  Tampilkan versi
+--path PATH [PATH ...]     Paths to scan (default: current directory)
+--ext EXT [EXT ...]        File extensions to scan (default: .php .phtml .php5 .php7 .sh .py .pl)
+--deep-scan                Enable additional heuristic checks (function density analysis)
+--json-output FILE         Export results to a JSON file
+--severity-level LEVEL     Minimum severity to report: low, medium, high, critical (default: low)
+--delete                   Auto-delete files with CRITICAL or HIGH findings (use with caution)
+-v, --verbose              Show detailed findings with line numbers and snippets
+--version                  Show version
 ```
 
-### Contoh penggunaan
+### Examples
 
 ```bash
-# Scan dengan output detail
+# Scan with detailed output
 shellhunter --path /var/www/html --verbose
 
-# Hanya tampilkan temuan HIGH dan CRITICAL
+# Only show HIGH and CRITICAL findings
 shellhunter --path /var/www/html --severity-level high
 
-# Export hasil ke JSON
+# Export results to JSON
 shellhunter --path /var/www/html --json-output report.json
 
-# Deep scan dengan semua heuristic
+# Deep scan with all heuristics
 shellhunter --path /var/www/html --deep-scan --verbose
 
-# Scan hanya file PHP
+# Scan only PHP files
 shellhunter --path /var/www/html --ext .php .phtml
 
-# Kombinasi untuk CI/CD pipeline
+# CI/CD pipeline usage
 shellhunter --path /var/www/html --severity-level high --json-output report.json
-# Exit code 1 jika ada temuan CRITICAL/HIGH, 0 jika bersih
+# Exit code 1 if CRITICAL/HIGH findings exist, 0 if clean
+
+# Delete detected malicious files (irreversible — confirm before use)
+shellhunter --path /var/www/html --delete --verbose
 ```
 
-## Deteksi
+## Detection Rules
 
-### Signature (19 rules)
+### Signatures (32 rules)
 
-| Rule | Deskripsi | Severity |
-|------|-----------|----------|
+| Rule | Description | Severity |
+|------|-------------|----------|
 | SIG-001 | `eval($_POST/$_GET/$_REQUEST)` | CRITICAL |
-| SIG-002 | `system/exec/passthru/shell_exec` dengan variabel | CRITICAL |
+| SIG-002 | `system/exec/passthru/shell_exec` with variable argument | CRITICAL |
 | SIG-003 | `eval(base64_decode(...))` | CRITICAL |
-| SIG-004 | Chain `gzinflate/str_rot13/base64_decode` | HIGH |
-| SIG-005 | `preg_replace` dengan modifier `/e` | HIGH |
-| SIG-006 | Kombinasi `fopen` + `fwrite` | HIGH |
+| SIG-004 | Chained `gzinflate/str_rot13/base64_decode` | HIGH |
+| SIG-005 | `preg_replace` with `/e` modifier | HIGH |
+| SIG-006 | `fopen` + `fwrite` combo (dropper pattern) | HIGH |
 | SIG-007 | `assert($_POST/$_GET/$_REQUEST)` | CRITICAL |
-| SIG-008 | `base64_decode` pada variabel | MEDIUM |
-| SIG-009 | `chmod 777` dalam kode | MEDIUM |
-| SIG-010 | String hex-escaped panjang | MEDIUM |
+| SIG-008 | `base64_decode` on variable | MEDIUM |
+| SIG-009 | `chmod 777` in code | MEDIUM |
+| SIG-010 | Long hex-escaped string (>30 sequences) | MEDIUM |
 | SIG-011 | `create_function()` | HIGH |
 | SIG-012 | Bash reverse shell (`/dev/tcp`) | CRITICAL |
 | SIG-013 | Netcat reverse shell (`nc -e`) | CRITICAL |
 | SIG-014 | Python reverse shell (`socket` + `subprocess`) | HIGH |
-| SIG-015 | `curl` pipe ke `bash` | HIGH |
-| SIG-016 | `eval($variable)` pada variabel non-superglobal | HIGH |
-| SIG-017 | Konstruksi nama fungsi dinamis (`base64_decode` di-split) | HIGH |
-| SIG-018 | Kombinasi `error_reporting(0)` + `set_time_limit(0)` | MEDIUM |
-| SIG-019 | Variable function call `$var($arg)` — eksekusi tidak langsung | HIGH |
+| SIG-015 | `curl` piped to shell | HIGH |
+| SIG-016 | `eval($variable)` on non-superglobal variable | HIGH |
+| SIG-017 | Dynamic function name construction (`base64_decode` split across variables) | HIGH |
+| SIG-018 | `error_reporting(0)` + `set_time_limit(0)` combo | MEDIUM |
+| SIG-019 | Variable function call `$var($arg)` | HIGH |
+| SIG-020 | Variable concatenation to build function name (`$a='sys'; $a.='tem'`) | CRITICAL |
+| SIG-021 | Dangerous function assigned to variable then called (`$fn='system'; $fn(...)`) | CRITICAL |
+| SIG-022 | Variable variable function execution (`$$fn()`, `${$fn}()`) | HIGH |
+| SIG-023 | Session/Cookie variable used as callable (`$_SESSION['x']($cmd)`) | CRITICAL |
+| SIG-024 | XOR decode loop (`chr(ord($s[$i]) ^ 0x42)`) | HIGH |
+| SIG-025 | Multi-layer encoding: gzip + base64/rot13 (`gzinflate(base64_decode(...))`) | CRITICAL |
+| SIG-026 | `fsockopen` to hardcoded IP (PHP reverse shell) | CRITICAL |
+| SIG-027 | `include`/`require` with user-controlled path (Remote File Inclusion) | CRITICAL |
+| SIG-028 | `strrev()` used to hide function names (`strrev('metsys')`) | HIGH |
+| SIG-029 | GIF89a/GIF87a header with embedded PHP (polyglot file) | CRITICAL |
+| SIG-030 | Known webshell string identifiers (c99shell, r57shell, b374k, WSO, IndoXploit, etc.) | CRITICAL |
+| SIG-031 | `ini_set()` used to clear `disable_functions` or `open_basedir` | HIGH |
+| SIG-032 | `array_map()` with dangerous callback string (`array_map('system', $_GET)`) | CRITICAL |
 
-### Heuristic (7 rules)
+### Heuristics (9 rules)
 
-| Rule | Deskripsi | Severity |
-|------|-----------|----------|
+| Rule | Description | Severity |
+|------|-------------|----------|
 | HEU-001 | Shannon entropy > 5.5 | MEDIUM |
-| HEU-002 | Baris > 5000 karakter | MEDIUM |
-| HEU-003 | 5+ nama variabel > 20 karakter | MEDIUM |
-| HEU-004 | Rasio komentar < 1% pada file 50+ baris | LOW |
-| HEU-005 | 3+ panggilan fungsi encoding | HIGH |
-| HEU-006 | File kecil (<4KB) dengan density fungsi tinggi (deep-scan) | MEDIUM |
-| HEU-007 | 100+ string concatenation assignments (`.=`) — payload assembly | HIGH |
+| HEU-002 | Line exceeds 5000 characters | MEDIUM |
+| HEU-003 | 5+ variable names longer than 20 characters | MEDIUM |
+| HEU-004 | Comment ratio < 1% in files with 50+ lines | LOW |
+| HEU-005 | 3+ encoding/decoding function calls | HIGH |
+| HEU-006 | Small file (<4KB) with high function call density (deep-scan only) | MEDIUM |
+| HEU-007 | 100+ string concatenation assignments (`.="`) — payload assembly | HIGH |
+| HEU-008 | PHP code (`<?php`, `eval(`) found in non-PHP files (`.txt`, `.csv`, `.xml`, `.svg`) | HIGH |
+| HEU-009 | Double or disguised file extension (e.g., `shell.php.pdf`, `image.jpg.php`) | HIGH |
 
-### Metadata (3 rules)
+### Metadata (4 rules)
 
-| Rule | Deskripsi | Severity |
-|------|-----------|----------|
-| META-001 | Permission 777 | HIGH |
-| META-002 | World-writable | MEDIUM |
-| META-003 | File baru di direktori lama | MEDIUM |
+| Rule | Description | Severity |
+|------|-------------|----------|
+| META-001 | File has 777 permissions | HIGH |
+| META-002 | File is world-writable | MEDIUM |
+| META-003 | Recently modified file in an old directory (possible implant) | MEDIUM |
+| META-004 | Script file smaller than 200 bytes (possible one-liner shell) | MEDIUM |
 
 ## Scoring
 
-- Setiap temuan memiliki skor berdasarkan severity (CRITICAL: 35-45, HIGH: 25-30, MEDIUM: 15-20, LOW: 5-10)
-- Risk score per file = total skor temuan, capped 0-100
-- Hasil diurutkan berdasarkan risk score tertinggi
+- Each finding carries a score based on severity (CRITICAL: 35–45, HIGH: 25–30, MEDIUM: 15–20, LOW: 5–10)
+- Risk score per file = sum of finding scores, capped at 0–100
+- Results are sorted by risk score (highest first)
 
-## Keamanan
+## --delete Mode
 
-- **Read-only** — tidak pernah mengeksekusi atau memodifikasi file target
-- Pattern matching pada raw bytes, tidak ada `eval()` atau eksekusi kode
-- File read dibatasi 10MB, analisis heuristic dibatasi 2MB
-- Symlink loop protection dengan inode tracking
-- Error handling: log and continue, tidak crash
+When `--delete` is passed, ShellHunter will permanently remove any file that has at least one CRITICAL or HIGH finding after scanning.
+
+- A bold warning is printed before the scan begins
+- Deleted files are logged and marked `[DELETED]` in the output
+- The summary table shows a "Files deleted" count
+- JSON output includes a `"deleted": true` field per result
+
+**This action is irreversible.** Always run without `--delete` first to review findings before enabling auto-deletion.
+
+## Security
+
+- **Read-only by default** — never executes or modifies target files unless `--delete` is explicitly passed
+- Pattern matching on raw bytes — no `eval()` or code execution internally
+- File reads capped at 10MB; heuristic analysis capped at 2MB
+- Symlink loop protection via inode tracking
+- Graceful error handling: log and continue, no crashes

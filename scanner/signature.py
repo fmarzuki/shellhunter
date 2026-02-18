@@ -157,6 +157,110 @@ SIGNATURE_RULES: list[tuple[str, re.Pattern[bytes], str, Severity, int]] = [
         Severity.HIGH,
         30,
     ),
+    # SIG-020: Variable concatenation to build function name
+    (
+        "SIG-020",
+        re.compile(rb'\$[a-zA-Z_]\w*\s*=\s*[\'"][a-z_]{2,}[\'"];\s*\$[a-zA-Z_]\w*\s*\.=', re.IGNORECASE),
+        "Variable concatenation to build function name (obfuscation)",
+        Severity.CRITICAL,
+        40,
+    ),
+    # SIG-021: Assign dangerous function to variable, then call
+    (
+        "SIG-021",
+        re.compile(rb'\$[a-zA-Z_]\w*\s*=\s*[\'\"](system|exec|passthru|shell_exec|eval|assert|popen)[\'\"]\s*;\s*\$[a-zA-Z_]\w*\s*\(', re.IGNORECASE),
+        "Dangerous function assigned to variable then called",
+        Severity.CRITICAL,
+        40,
+    ),
+    # SIG-022: Variable variable function execution
+    (
+        "SIG-022",
+        re.compile(rb'\$\$[a-zA-Z_]\w*\s*\(|\$\{\s*\$[a-zA-Z_]\w*\s*\}\s*\('),
+        "Variable variable function execution ($$fn() or ${$fn}())",
+        Severity.HIGH,
+        30,
+    ),
+    # SIG-023: Session/Cookie variable as callable
+    (
+        "SIG-023",
+        re.compile(rb'\$_(SESSION|COOKIE)\s*\[\s*[\'\"]\w+[\'\"]\s*\]\s*\(\s*\$', re.IGNORECASE),
+        "Session/Cookie variable used as callable - backdoor pattern",
+        Severity.CRITICAL,
+        40,
+    ),
+    # SIG-024: XOR decode loop
+    (
+        "SIG-024",
+        re.compile(rb'chr\s*\(\s*ord\s*\([^)]+\)\s*\^\s*(?:0x[0-9a-fA-F]{1,2}|\d{1,3})\s*\)', re.IGNORECASE),
+        "XOR decode loop (chr/ord with XOR) - obfuscation",
+        Severity.HIGH,
+        30,
+    ),
+    # SIG-025: Multi-layer encoding (gzip + base64/rot13)
+    (
+        "SIG-025",
+        re.compile(rb'(gzuncompress|gzinflate|gzdecode)\s*\(\s*(base64_decode|str_rot13|urldecode)\s*\(', re.IGNORECASE),
+        "Multi-layer encoding: gzip+base64/rot13 (double-wrapped payload)",
+        Severity.CRITICAL,
+        45,
+    ),
+    # SIG-026: fsockopen reverse shell
+    (
+        "SIG-026",
+        re.compile(rb'(fsockopen|pfsockopen)\s*\(\s*[\'"]\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}[\'"]', re.IGNORECASE),
+        "fsockopen to hardcoded IP - PHP reverse shell pattern",
+        Severity.CRITICAL,
+        45,
+    ),
+    # SIG-027: include/require via superglobal
+    (
+        "SIG-027",
+        re.compile(rb'(include|require|include_once|require_once)\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)', re.IGNORECASE),
+        "include/require with user-controlled path (Remote File Inclusion)",
+        Severity.CRITICAL,
+        40,
+    ),
+    # SIG-028: strrev to hide function name
+    (
+        "SIG-028",
+        re.compile(rb'strrev\s*\(\s*[\'\"](noitcnuf|metsys|lave|tressa|tuptuo_reffub)[\'\"]\s*\)', re.IGNORECASE),
+        "strrev() used to hide dangerous function name",
+        Severity.HIGH,
+        30,
+    ),
+    # SIG-029: GIF89a PHP polyglot header
+    (
+        "SIG-029",
+        re.compile(rb'GIF8[79]a.{0,20}<\?(?:php)?', re.DOTALL),
+        "GIF89a/GIF87a header with embedded PHP (polyglot file)",
+        Severity.CRITICAL,
+        45,
+    ),
+    # SIG-030: Extended known webshell signatures
+    (
+        "SIG-030",
+        re.compile(rb'IndoXploit|c99shell|r57shell|b374k|WSO\s|FilesMan|0byt3m1n1|alfa\.team|ALFA_DATA|edoced_46esab|Sh3llm1x|pwnshell', re.IGNORECASE),
+        "Known webshell identifier string",
+        Severity.CRITICAL,
+        45,
+    ),
+    # SIG-031: ini_set to disable PHP security
+    (
+        "SIG-031",
+        re.compile(rb'ini_set\s*\(\s*[\'\"](disable_functions|open_basedir)[\'\"]\s*,\s*[\'\"][\'\"]', re.IGNORECASE),
+        "ini_set() used to clear disable_functions or open_basedir",
+        Severity.HIGH,
+        30,
+    ),
+    # SIG-032: array_map with dangerous function string
+    (
+        "SIG-032",
+        re.compile(rb'array_map\s*\(\s*[\'\"](assert|exec|system|eval|passthru)[\'\"]\s*,', re.IGNORECASE),
+        "array_map() with dangerous callback string",
+        Severity.CRITICAL,
+        40,
+    ),
 ]
 
 SNIPPET_MAX_LEN = 200

@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Callable
 
 from .heuristic import HeuristicAnalyzer
@@ -20,11 +21,13 @@ class ShellHunterAnalyzer:
         extensions: set[str] | None = None,
         deep_scan: bool = False,
         severity_level: Severity = Severity.LOW,
+        delete_mode: bool = False,
     ):
         self.paths = paths
         self.extensions = extensions
         self.deep_scan = deep_scan
         self.severity_level = severity_level
+        self.delete_mode = delete_mode
         self.signature_scanner = SignatureScanner()
         self.heuristic_analyzer = HeuristicAnalyzer()
         self.metadata_analyzer = MetadataAnalyzer()
@@ -57,6 +60,19 @@ class ShellHunterAnalyzer:
                 result.compute_risk_score()
                 if result.findings:
                     summary.results.append(result)
+
+                    # Auto-delete if delete_mode and finding is CRITICAL/HIGH
+                    if self.delete_mode and any(
+                        f.severity in (Severity.CRITICAL, Severity.HIGH)
+                        for f in result.findings
+                    ):
+                        try:
+                            os.remove(fpath)
+                            logger.warning("DELETED: %s (risk score: %d)", fpath, result.risk_score)
+                            result.deleted = True
+                        except OSError as e:
+                            logger.error("Failed to delete %s: %s", fpath, e)
+
                 if result.error:
                     summary.errors += 1
 
@@ -91,7 +107,7 @@ class ShellHunterAnalyzer:
 
             # Heuristic analysis
             result.findings.extend(
-                self.heuristic_analyzer.analyze(content, deep_scan=self.deep_scan)
+                self.heuristic_analyzer.analyze(content, deep_scan=self.deep_scan, file_path=path)
             )
         except Exception as e:
             logger.debug("Error analyzing %s: %s", path, e)
